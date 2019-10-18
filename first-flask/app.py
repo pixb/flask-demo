@@ -27,7 +27,7 @@ def my_list():
 # 如果这个文件是作为一个主文件运行，那么就执行app.run()方法
 # 也就是启动这个网站
 if __name__ == '__main__':
-    # app.run():Flask中的一个测试应用服务器
+    app.run() #Flask中的一个测试应用服务器
     # while True:
     #   listen()
-    app.run(prot=5000)  # 可以指定端口号,默认5000
+    # app.run(prot=5000)  # 可以指定端口号,默认5000
