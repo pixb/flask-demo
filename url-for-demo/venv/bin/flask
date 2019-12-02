@@ -1,4 +1,4 @@
-#!/Users/pix/dev/code/python/python-web-demo/url-for-demo/venv/bin/python
+#!/home/pix/dev/code/python/python-web-demo/url-for-demo/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
