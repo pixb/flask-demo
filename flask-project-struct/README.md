@@ -31,7 +31,31 @@
 	|-requirements.txt
 	|-config.py
 	|-manage.py
+from flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
 
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+# 程序工厂创建函数，参数是使用的配置名称，配置从config字典中获取。
+# 扩展对象通过,init_app()来初始化扩展。
+def create_app(config_name):
+	app = Flask(__name__)
+	app.config.from_object(config[config_name])
+	config[config_name].init_app(app)
+	bootstrap.init_app(app)
+	mail.init_app(app)
+	moment.init_app(app)
+	db.init_app(app)
+	
+	# 附加路由和自定义的错误页面
+	return app
 ```
 
 这种结构有 4 个顶级文件夹:
@@ -110,12 +134,210 @@ config = {
 
 ## 3、程序包
 
-程序包用来保存程序的所有代码、模板和静态文件。我们可以把这个包直接称为 app(应用),如果有需求,也可使用一个程序专用名字。templates 和 static 文件夹是程序包的一部分,因此这两个文件夹被移到了 app 中。数据库模型和电子邮件支持函数也被移到了这个包中,分别保存为 app/models.py 和 app/ATABASE_URL 中读取,如果没有定义这个环境变量,则使用名为`data-dev.sqlite` 的 `SQLite` 数据库。
+程序包用来保存程序的所有代码、模板和静态文件。我们可以把这个包直接称为 app(应用),如果有需求,也可使用一个程序专用名字。templates 和 static 文件夹是程序包的一部分,因此这两个文件夹被移到了 app 中。数据库模型和电子邮件支持函数也被移到了这个包中,分别保存为 `app/models.py` 和`app/email.py`。
+
+### 3.1、使用程序工厂函数
+
+在单个文件中开发程序很方便,但却有个很大的缺点,因为程序在全局作用域中创建,所以无法动态修改配置。运行脚本时,程序实例已经创建,再修改配置为时已晚。这一点对单元测试尤其重要,因为有时为了提高测试覆盖度,必须在不同的配置环境中运行程序。
+
+这个问题的解决方法是延迟创建程序实例,把创建过程移到可显式调用的工厂函数中。这种方法不仅可以给脚本留出配置程序的时间,还能够创建多个程序实例,这些实例有时在测试中非常有用。程序的工厂函数在 app 包的构造文件中定义,如示例 7-3 所示。
+
+在构造文件中导入大多数正在视同的`Flask`扩展。
+
+示例:`app/__init__.py`程序包的构造文件。
+
+```css
+from flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
+from flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
+
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+# 程序工厂创建函数，参数是使用的配置名称，配置从config字典中获取。
+# 扩展对象通过,init_app()来初始化扩展。
+def create_app(config_name):
+	app = Flask(__name__)
+	app.config.from_object(config[config_name])
+	config[config_name].init_app(app)
+	bootstrap.init_app(app)
+	mail.init_app(app)
+	moment.init_app(app)
+	db.init_app(app)
+	
+	# 附加路由和自定义的错误页面
+	return app
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+# 程序工厂创建函数，参数是使用的配置名称，配置从config字典中获取。
+# 扩展对象通过,init_app()来初始化扩展。
+def create_app(config_name):
+	app = Flask(__name__)
+	app.config.from_object(config[config_name])
+	config[config_name].init_app(app)
+	bootstrap.init_app(app)
+	mail.init_app(app)
+	moment.init_app(app)
+	db.init_app(app)
+	
+	# 附加路由和自定义的错误页面
+	return appfrom flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
+
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+# 程序工厂创建函数，参数是使用的配置名称，配置从config字典中获取。
+# 扩展对象通过,init_app()来初始化扩展。
+def create_app(config_name):
+	app = Flask(__name__)
+	app.config.from_object(config[config_name])
+	config[config_name].init_app(app)
+	bootstrap.init_app(app)
+	mail.init_app(app)
+	moment.init_app(app)
+	db.init_app(app)
+	
+	# 附加路由和自定义的错误页面
+	return app
+
+```
+
+现在工厂函数还不完整，没有路由和和自定义的错误页面处理程序。
+
+### 3.2、在蓝本中实现程序
+
+因为在`Flask`中只有调用里`create_app()`之后才能使用`app.route`修饰器，这就给提前定义路由制造里困难。
+
+使用`蓝本`解决这个问题。
+
+和程序一样，蓝本可以在单个文件中定义。,也可使用更结构化的方式在包中的多个模块中创建。
+
+为了获得最大的灵活性,程序包中创建了一个子包,用于保存蓝本。
+
+示例子包的构造文件，蓝本创建于此。
+
+示例：`app/main/__init__.py`:创建蓝本
+
+```css
+from flask import Blueprint
+
+main = Blueprint('main', __name__)
+
+from . import views, errors
+
+```
+
+通过实例化一个 Blueprint 类对象可以创建蓝本。这个构造函数有两个必须指定的参数:蓝本的名字和蓝本所在的包或模块。和程序一样,大多数情况下第二个参数使用 Python 的`__name__` 变量即可。
+
+程序的路由保存在包里的 `app/main/views.py` 模块中,
+
+而错误处理程序保存在 `app/main/errors.py` 模块中。
+
+导入这两个模块就能把路由和错误处理程序与蓝本关联起来。
+
+注意,这些模块在` app/main/__init__.py` 脚本的末尾导入,这是为了避免循环导入依赖,因为在`views.py` 和 `errors.py` 中还要导入蓝本 main。
+
+蓝本在工厂函数` create_app() `中注册到程序上,
+
+示例：`app/__init__.py`:注册蓝本
+
+```css
+def create_app(config_name):
+# ...
+	from .main import main as main_blueprint
+	app.register_blueprint(main_blueprint)
+	return app
+
+```
+
+示例：`app/main/errors.py`:蓝本中的错误处理程序
+
+```css
+from flask import render_template
+from . import main
+
+@main.app_errorhandler(404)
+def page_not_found(e):
+	return render_template('404.html'), 404
+	
+@main.from flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
+
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+# 程序工厂创建函数，参数是使用的配置名称，配置从config字典中获取。
+# 扩展对象通过,init_app()来初始化扩展。
+def create_app(config_name):
+	app = Flask(__name__)
+	app.config.from_object(config[config_name])
+	config[config_name].init_app(app)
+	bootstrap.init_app(app)
+	mail.init_app(app)
+	moment.init_app(app)
+	db.init_app(app)
+	
+	# 附加路由和自定义的错误页面
+	return appapp_errorhandler(500)
+def internal_server_error(e):
+	return render_template('500.html'), 500
+
+```
+
+在蓝本中编写错误处理程序稍有不同,如果使用 `errorhandler` 修饰器,那么只有蓝本中的错误才能触发处理程序。要想注册程序全局的错误处理程序,必须使用 `app_errorhandler`。
+
+示例  `app/main/views.py`:蓝本中定义的程序路由
+
+```python
+from datetime import datetime
+from flask import render_template, session, redirect, url_for
+
+from . import main
+from .forms import NameForm
+from .. import db
+from ..models import User
+
+@main.route('/', methods=['GET', 'POST'])
+def index():
+	form = NameForm()
+	if form.validate_on_submit():
+		# ...
+		return redirect(url_for('.index'))
+	return render_template('index.html',
+							form=form, name=session.get('name'),
+	ATABASE_URL 中读取,如果没有定义这个环境变量,则使用名为`data-dev.sqlite` 的 `SQL-ite` 数据库。
 不管从哪里获取数据库 URL,都要在新数据库中创建数据表。
 
 如果使用 Flask-Migrate 跟踪迁移,可使用如下命令创建数据表或者升级到最新修订版本:
 
-```css
+​```css
 (venv) $ python manage.py db upgrade
 ```
 
@@ -123,12 +345,10 @@ config = {
 
 不管你是否相信,第一部分到此就要结束了。现在你已经学到了使用 Flask 开发 Web 程序
 的必备基础知识,不过可能还不确定如何把这些知识融贯起来开发一个真正的程序。本书
-第二部分的目的就是解决这个问题,带着你一步一步地开发出一个完整的程序。
-known=session.get('known', False),
+第二部分的目的就是解决这个问题,带着你一步一步地开发出一个完整的程序。						known=session.get('known', False),
 							current_time=datetime.utcnow())
 
 ```
-
 在蓝本中编写视图函数主要有两点不同:
 
 - 第一,和前面的错误处理程序一样,路由修饰器由蓝本提供;
