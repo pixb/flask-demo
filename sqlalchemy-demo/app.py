@@ -1,11 +1,14 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate,MigrateCommand
+from flask_script import Shell,Manager
 
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
+
 
 class Role(db.Model):
     __tablename__='roles'
@@ -24,6 +27,17 @@ class User(db.Model):
 
     def __repr__(self):
         return '<User {}'.format(self.username)
+
+def make_shell_context():
+    return dict(app=app, db=db, User=User, Role=Role)
+
+manager = Manager(app)
+
+# migrate 数据库迁移
+migrate = Migrate(app, db)
+manager.add_command('db', MigrateCommand)
+
+
 @app.route('/')
 def hello_world():
     return 'Hello World!'
@@ -46,4 +60,4 @@ def add_user():
     return "add all user success!"
 
 if __name__ == '__main__':
-    app.run()
+    manager.run()
