@@ -1,0 +1,16 @@
+env/
+
+*.pyc
+__pycache__/
+
+instance/
+
+.pytest_cache/
+.coverage
+htmlcovv/
+
+dist/
+build/
+*.egg-info/
+
+nohup.out
