@@ -29,7 +29,3 @@ def create_app(config_name):
     return app
 
 
-bootstrap = Bootstrap()
-mail = Mail()
-moment = Moment()
-
