@@ -1,0 +1,6 @@
+Flask
+gevent
+Flask-Sqlalchemy
+Flask-cors
+Flask-Migrate
+Flask-Restful
